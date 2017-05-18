@@ -12,7 +12,7 @@ Código de Dominio Público
 #include <Password.h> //Incluimos la libreria Password
 #include <Keypad.h> //Incluimos la libreria Keypad
 #include <LiquidCrystal.h>  //Incluimos la libreria LiquidCrystal
- 
+
 Password password = Password("00000");  //Definimos el Password
 int max_password = 5;                        //Largo del Password
 int cont = 0;
@@ -20,6 +20,7 @@ String initial_password;
 char key;
 LiquidCrystal lcd(A0, A1, A2, A3, A4, A5); //Definimos los pines del LCD
 
+String data ="";
 Servo seguroPuerta;
 int buzzer = 13; //Creamos las Variables de salida
 int ledRed = 11; 
@@ -46,12 +47,14 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 void setup()
 {
   Serial.begin(9600);
+
+  
   keypad.addEventListener(keypadEvent);  
   pinMode(ledRed, OUTPUT);  
   pinMode(ledGreen, OUTPUT);
   pinMode(buzzer, OUTPUT);
   seguroPuerta.attach(10);
-  seguroPuerta.write(90);
+  seguroPuerta.write(0);
   digitalWrite(ledRed, HIGH);
   digitalWrite(ledGreen, LOW);  
   
@@ -66,12 +69,28 @@ void loop()
 {  
   keypad.getKey();
   
-  if(Serial.available() >= 1){
-    char rec = Serial.read();
-    if(rec == "Cajafuerte"){
-      Serial.print("Caja fuerte");  
-    }
+  if(Serial.available()){   
+    data = (String)Serial.readString();
     
+    if(data.length()>1){
+      for(int i=0; i< data.length();i++){
+      password.append(data[i]);
+       }
+      if(password.evaluate()){
+         Serial.print("correcta");
+         password.reset();
+      }else{
+         Serial.print("incorrecta");
+         password.reset();
+      }
+    }else{
+      if(data == "O"){
+        openDoor();
+      }
+      if(data == "C"){
+        closeDoor();
+      }
+    }
   }
 }
 void keypadEvent(KeypadEvent eKey)
@@ -88,23 +107,18 @@ void keypadEvent(KeypadEvent eKey)
         delay(100);      
       }    
  
-      Serial.print("Ingreso: ");
-      Serial.println(eKey);
+      /*Serial.print("Ingreso: ");
+      Serial.println(eKey);*/
  
       switch (eKey)
       {
       
-      case '#':
-        //setPassword();
-        seguroPuerta.write(90);
-        delay(1000);
+      case '#':              
+        openDoor();
         break;    
        
       case '*':
-        seguroPuerta.write(180);
-        delay(1000);
-        seguroPuerta.write(0);
-        delay(1000);
+        closeDoor();
         break;
       
        
@@ -162,6 +176,26 @@ void keypadEvent(KeypadEvent eKey)
   }
 }
 
+void openDoor(){             
+  seguroPuerta.write(90);
+  delay(1000);
+}
+
+void closeDoor(){   
+  seguroPuerta.write(0);        
+  digitalWrite(buzzer, HIGH);  
+  delay(500);            
+  digitalWrite(buzzer, LOW);  
+  delay(100);      
+  digitalWrite(ledGreen, LOW);
+  digitalWrite(ledRed, HIGH);    
+  seguroPuerta.write(0);        
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("  *Bienvenido*");
+  lcd.setCursor(0,1);
+  lcd.print("FAVOR ENTRE PIN");  
+}
 
 void checkPassword()
 {
@@ -178,11 +212,11 @@ void checkPassword()
     num_clicks = 0;
     password.reset();
     
-    Serial.println("Correcto");    
+   // Serial.println("Correcto");    
  
     digitalWrite(ledRed, LOW);
     digitalWrite(ledGreen, HIGH);
-    seguroPuerta.write(0);
+    seguroPuerta.write(90);
  
     lcd.clear();
     lcd.setCursor(0,0);
@@ -191,27 +225,7 @@ void checkPassword()
     lcd.print("<<CORRECTA>>");    
  
     delay(5000);
-
     
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("<<Cerrando>>");    
-    lcd.setCursor(0,1);
-    lcd.print("<<Puerta>>"); 
-    digitalWrite(buzzer, HIGH);  
-    delay(1500);            
-    digitalWrite(buzzer, LOW);  
-    delay(100);      
-    digitalWrite(ledGreen, LOW);
-    digitalWrite(ledRed, HIGH);    
-    seguroPuerta.write(90);
-       
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("  *Bienvenido*");
-    lcd.setCursor(0,1);
-    lcd.print("FAVOR ENTRE PIN");   
- 
   }  
   else  
   {
@@ -226,7 +240,7 @@ void checkPassword()
     num_clicks = 0;  
     password.reset();
  
-    Serial.println("Error");
+    //Serial.println("Error");
  
     digitalWrite(ledGreen, LOW);
     digitalWrite(ledRed, HIGH);    
@@ -245,7 +259,7 @@ void checkPassword()
     lcd.print("FAVOR ENTRE PIN");    
   }
 }
-
+/*
 void setPassword(){
     lcd.clear();
     lcd.print("Ingrese la nueva ");
@@ -315,4 +329,4 @@ void setPassword(){
         cont = 0;
       }
     }while(cont < 5 );    
-   }
+   }*/
